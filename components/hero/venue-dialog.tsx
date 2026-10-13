@@ -21,18 +21,18 @@ export function VenueDialog({ venue }: { venue: string }) {
   return (
     <Dialog>
       <DialogTrigger
-        className="flex cursor-pointer items-center justify-center gap-2.5 px-4 py-3.5 text-xs font-medium uppercase tracking-[0.15em] text-[#FBF3E3]/90 transition-colors hover:bg-amber-400/10 hover:text-amber-300 text-center"
+        className="event-fact event-venue flex cursor-pointer items-center justify-center gap-2.5 text-[#FBF3E3]/90 transition-colors hover:bg-amber-400/10 hover:text-amber-300 text-center"
       >
         <MapPin className="size-4 text-amber-700 shrink-0" strokeWidth={1.5} />
-        <span className="truncate">{venue}</span>
+        <span>{venue}</span>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="event-venue-dialog sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="size-4 text-amber-700" strokeWidth={1.5} />
             ¿Cómo llegar?
           </DialogTitle>
-          <DialogDescription className="uppercase tracking-[0.15em] text-xs">
+          <DialogDescription className="text-sm">
             {VENUE_ADDRESS}
           </DialogDescription>
         </DialogHeader>
