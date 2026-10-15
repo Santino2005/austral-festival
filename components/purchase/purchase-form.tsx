@@ -29,12 +29,20 @@ import {
   Sparkles,
 } from "lucide-react";
 
-interface TierOption {
+export interface TierOption {
   id: string;
   name: string;
   price: number;
   ticketCount: number;
   remaining: number;
+}
+
+export interface PurchaseFormProps {
+  tiers: TierOption[];
+  stageName?: string;
+  deadlineLabel?: string;
+  shortDeadline?: string;
+  isClosed?: boolean;
 }
 
 interface GuestInput {
@@ -79,7 +87,12 @@ function resizeGuests(prev: GuestInput[], newLen: number): GuestInput[] {
   return [...prev, ...Array.from({ length: newLen - prev.length }, makeEmptyGuest)];
 }
 
-export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
+export function PurchaseForm({
+  tiers,
+  stageName = PREVENTA_LABEL,
+  deadlineLabel,
+  isClosed = false,
+}: PurchaseFormProps) {
   const router = useRouter();
 
   const individualTier = tiers.find((t) => t.ticketCount === 1) ?? tiers[0];
@@ -164,10 +177,27 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
     }
   }
 
+  if (isClosed) {
+    return (
+      <div className="purchase-form mx-auto">
+        <div className="purchase-ticket border border-border p-8 text-center text-muted-foreground">
+          <p className="font-serif text-xl font-bold text-foreground">
+            Venta anticipada online finalizada
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Las entradas ahora se adquieren directamente en puerta el día del evento.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!tier) {
     return (
-      <div className="mx-auto mt-10 max-w-3xl rounded-xl border border-border bg-card p-8 text-center text-base text-muted-foreground shadow-sm">
-        No hay entradas a la venta por ahora.
+      <div className="purchase-form mx-auto">
+        <div className="purchase-ticket border border-border p-8 text-center text-base text-muted-foreground shadow-sm">
+          No hay entradas a la venta por ahora.
+        </div>
       </div>
     );
   }
@@ -191,8 +221,6 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
         </div>
 
         <div className="purchase-content">
-
-
           {/* Tier header (shown when no pack available, original style) */}
           {!packTier && (
             <div className="flex flex-wrap items-end justify-between gap-4">
@@ -206,7 +234,7 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
                 <p className="mt-2 text-xs font-normal text-muted-foreground">
                   {soldOut
                     ? "Agotada"
-                    : `Disponibles (${PREVENTA_LABEL}) · habilita la compra de hasta ${DEFAULT_ALCOHOL_ALLOWANCE} bebidas con alcohol para mayores`}
+                    : `Disponibles (${stageName}${deadlineLabel ? ` · ${deadlineLabel.toLowerCase()}` : ""}) · habilitación para compra de alcohol permitida únicamente a mayores de 18`}
                 </p>
               </div>
               <div className="font-serif text-4xl font-bold text-foreground sm:text-5xl tracking-tight">
@@ -338,7 +366,7 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
                         {formatPrice(packTier.price)}
                       </span>
                       <span className="tier-detail font-normal">
-                        {packTier.ticketCount} entradas · pagás {packTier.ticketCount - 1}
+                        {packTier.ticketCount} entradas individuales
                       </span>
                     </span>
                   </label>
@@ -422,20 +450,20 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
                 <div className="flex items-center gap-2 animate-in fade-in-0 zoom-in-95 duration-200 rounded-lg border border-amber-600/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-800">
                   <Users className="size-3.5 shrink-0 text-amber-700" strokeWidth={1.5} />
                   <span>
-                    El pack incluye <strong>{tier.ticketCount} entradas</strong> individuales al precio de{" "}
-                    <strong>{tier.ticketCount - 1}</strong>.
+                    El pack incluye <strong>{tier.ticketCount} entradas</strong> individuales con precio promocional.
                   </span>
                 </div>
               )}
             </div>
 
+            {/* Guest Details: Attendee vs Donation */}
             {attending ? (
               <div className="animate-in fade-in-0 duration-200 space-y-4">
                 <h4 className="font-serif text-xs font-bold uppercase tracking-[0.2em] text-amber-700">
                   Datos de cada asistente
                 </h4>
                 <p className="text-xs font-normal text-muted-foreground">
-                  Completá los datos de cada persona. Los mayores de 18 años quedan habilitados para comprar hasta {DEFAULT_ALCOHOL_ALLOWANCE} bebidas alcohólicas en barra (los menores no acceden a la compra de alcohol).
+                  Completá los datos de cada persona. La compra de bebidas con alcohol en barra está permitida únicamente a mayores de 18 años (hasta {DEFAULT_ALCOHOL_ALLOWANCE} consumiciones).
                 </p>
                 {guests.map((guest, i) => (
                   <div
@@ -579,7 +607,7 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
                 : "Al completar el pago recibís tu comprobante de donación por email."}
             </p>
             <p className="text-center text-xs font-normal uppercase tracking-[0.2em] text-muted-foreground/50">
-              No está permitida la venta de bebidas alcohólicas a menores de edad.
+              La venta y consumo de bebidas alcohólicas está permitida únicamente a mayores de 18 años.
             </p>
           </form>
         </div>

@@ -257,8 +257,8 @@ export function TicketCard({
               </p>
             </>
           ) : (
-            <p className="text-xs font-light text-red-400">
-              Este asistente es menor de edad. No está habilitado para comprar ni consumir bebidas alcohólicas.
+            <p className="text-xs font-light text-amber-700">
+              Asistente menor de 18 años. La compra y consumo de bebidas alcohólicas está permitida únicamente a mayores de 18 años.
             </p>
           )}
         </div>

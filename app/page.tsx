@@ -3,11 +3,16 @@ import localFont from "next/font/local";
 import { prisma } from "@/lib/prisma";
 import { PurchaseForm } from "@/components/purchase/purchase-form";
 import { VenueDialog } from "@/components/hero/venue-dialog";
+import { EventCountdown } from "@/components/hero/event-countdown";
+import { DrinksNoticeDialog } from "@/components/hero/drinks-notice-dialog";
 import {
   DEFAULT_ALCOHOL_ALLOWANCE,
   DOORS_TEXT,
-  PREVENTA_LABEL,
 } from "@/lib/config";
+import {
+  getActiveTiersForEvent,
+  getCurrentPresaleStage,
+} from "@/lib/presale";
 import {
   CalendarDays,
   ArrowDown,
@@ -72,9 +77,14 @@ export default async function Home() {
     );
   }
 
+  const stage = getCurrentPresaleStage();
+  const { tiers: activeTiers } = await getActiveTiersForEvent(
+    event.id,
+    event.ticketTiers
+  );
   const eventDate = new Date(event.date);
-  const tier = event.ticketTiers[0];
-  const unitPrice = tier?.price ?? 10000;
+  const tier = activeTiers.find((t) => t.ticketCount === 1) ?? activeTiers[0];
+  const unitPrice = stage.individualPrice ?? tier?.price ?? 12000;
 
   const remaining = (t: { maxStock: number; soldCount: number }) =>
     Math.max(0, t.maxStock - t.soldCount);
@@ -87,6 +97,8 @@ export default async function Home() {
 
   return (
     <div className="event-page bg-background text-foreground">
+      <DrinksNoticeDialog />
+
       {/* Hero Section */}
       <section className="event-hero relative overflow-hidden border-b border-border">
         {/* Background Image: Warm cacao wash with acoustic folk warmth */}
@@ -123,6 +135,8 @@ export default async function Home() {
             {event.description}
           </p>
 
+          <EventCountdown targetDate={event.date} />
+
           {/* Centered details dock - Row 1: Date, Doors, Venue. Row 2: Price & Preventa centered */}
           <div className="event-hero-details mx-auto mt-10 w-full max-w-4xl">
             {/* Fila 1: Día, Horarios y Ubicación en una sola fila */}
@@ -144,24 +158,39 @@ export default async function Home() {
               <VenueDialog venue={event.venue} />
             </div>
 
-            {/* Fila 2: Precio con texto de preventa abajo centrado */}
-            <div className="flex items-center justify-center gap-3 px-6 pt-3">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-400/10 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-amber-300 leading-none">
-                <TicketIcon
-                  className="text-amber-300 shrink-0"
-                  strokeWidth={1.5}
-                  height={24}
-                  width={24}
-                />
-                <span>{PREVENTA_LABEL}</span>
+            {/* Fila 2: Precio con texto de preventa y plazo (o venta en puerta si cerró) */}
+            {stage.isClosed ? (
+              <div className="flex items-center justify-center gap-3 px-6 pt-3">
+                <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-300 leading-none">
+                  <TicketIcon
+                    className="text-amber-300 shrink-0"
+                    strokeWidth={1.5}
+                    height={20}
+                    width={20}
+                  />
+                  <span>Entradas disponibles en puerta</span>
+                </div>
               </div>
-              <span className="font-sans text-2xl font-bold tracking-tight sm:text-3xl leading-none text-[#FBF3E3]">
-                {formatPrice(unitPrice)}
-              </span>
-            </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 px-6 pt-3">
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-400/10 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-amber-300 leading-none">
+                  <TicketIcon
+                    className="text-amber-300 shrink-0"
+                    strokeWidth={1.5}
+                    height={20}
+                    width={20}
+                  />
+                  <span>{stage.name} · {stage.shortDeadline}</span>
+                </div>
+                <span className="font-sans text-2xl font-bold tracking-tight sm:text-3xl leading-none text-[#FBF3E3]">
+                  {formatPrice(unitPrice)}
+                </span>
+              </div>
+            )}
           </div>
           <a href="#entradas" className="event-cta">
-            Conseguí tu entrada <ArrowDown aria-hidden className="size-4" />
+            {stage.isClosed ? "Información de entradas en puerta" : "Conseguí tu entrada"}{" "}
+            <ArrowDown aria-hidden className="size-4" />
           </a>
         </div>
       </section>
@@ -176,24 +205,27 @@ export default async function Home() {
               Entradas
             </p>
             <h2 className="event-section-title mt-2 text-foreground">
-              Conseguí tu entrada hoy
+              {stage.isClosed ? "Entradas en puerta" : "Conseguí tu entrada hoy"}
             </h2>
             <p className="event-tickets-description mx-auto mt-4 font-normal">
-              Pagá con Mercado Pago y recibí tu QR por email al instante.
-              Disponibles en {PREVENTA_LABEL}. Una sola entrada con acceso completo:
-              música en vivo, patio de comidas y la habilitación para comprar hasta {DEFAULT_ALCOHOL_ALLOWANCE} bebidas
-              con alcohol (exclusivo para mayores de 18 años).
+              {stage.isClosed
+                ? "La venta anticipada online ha finalizado. Las entradas se adquieren directamente en puerta el día del evento."
+                : `Pagá con Mercado Pago y recibí tu QR por email al instante. Disponibles en ${stage.name} (${stage.deadlineLabel.toLowerCase()}). Una sola entrada con acceso completo: música en vivo, patio de comidas y la habilitación para comprar hasta ${DEFAULT_ALCOHOL_ALLOWANCE} bebidas con alcohol (exclusivo para mayores de 18 años).`}
             </p>
           </div>
 
           <PurchaseForm
-            tiers={event.ticketTiers.map((t) => ({
+            tiers={activeTiers.map((t) => ({
               id: t.id,
               name: t.name,
               price: t.price,
               ticketCount: t.ticketCount ?? 1,
               remaining: remaining(t),
             }))}
+            stageName={stage.name}
+            deadlineLabel={stage.deadlineLabel}
+            shortDeadline={stage.shortDeadline}
+            isClosed={stage.isClosed}
           />
         </div>
       </section>
@@ -240,8 +272,8 @@ export default async function Home() {
                 Hasta {DEFAULT_ALCOHOL_ALLOWANCE} bebidas
               </h3>
               <p className="mt-3 text-sm font-normal leading-relaxed text-muted-foreground">
-                Cada entrada de mayor de 18 años habilita la posibilidad de comprar hasta {DEFAULT_ALCOHOL_ALLOWANCE} bebidas
-                alcohólicas en la barra del evento. Los menores de edad no acceden a la compra ni consumo de alcohol.
+                Cada entrada de mayor de 18 años habilita la posibilidad de hasta {DEFAULT_ALCOHOL_ALLOWANCE} consumiciones
+                alcohólicas en la barra del evento. La compra y consumo de alcohol está permitida únicamente a mayores de 18 años.
               </p>
             </div>
           </div>
