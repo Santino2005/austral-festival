@@ -151,6 +151,18 @@ export function PurchaseForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!tier) return;
+
+    if (attending) {
+      const dnis = guests
+        .map((g) => g.dni?.trim().replace(/\D/g, ""))
+        .filter(Boolean);
+      const unique = new Set(dnis);
+      if (unique.size !== dnis.length) {
+        toast.error("No podés ingresar el mismo DNI para más de un asistente.");
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const result = await createCheckoutPreference({

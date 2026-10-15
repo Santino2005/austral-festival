@@ -49,6 +49,8 @@ model Purchase {
   referringVolunteer String?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
+  remindersSent     Int         @default(0)
+  lastReminderAt    DateTime?
   tickets           Ticket[]
 }
 

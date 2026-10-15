@@ -168,6 +168,30 @@ export async function createCheckoutPreference({
       if (guestErrors.length > 0) {
         return { ok: false, error: guestErrors[0] };
       }
+
+      const dnis = parsedGuests.map((g) => g.dni);
+      const uniqueDnis = new Set(dnis);
+      if (uniqueDnis.size !== dnis.length) {
+        return {
+          ok: false,
+          error: "No podés ingresar el mismo DNI más de una vez en la misma compra.",
+        };
+      }
+
+      const existingTicket = await prisma.ticket.findFirst({
+        where: {
+          holderDni: { in: dnis },
+          status: { in: ["active", "used"] },
+        },
+        select: { holderDni: true, holderName: true },
+      });
+
+      if (existingTicket) {
+        return {
+          ok: false,
+          error: `El DNI ${existingTicket.holderDni} ya tiene una entrada registrada (${existingTicket.holderName}). Solo se permite una entrada por persona.`,
+        };
+      }
     }
 
     if (!isDonation) {
