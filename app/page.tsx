@@ -1,14 +1,21 @@
 import Image from "next/image";
+import localFont from "next/font/local";
 import { prisma } from "@/lib/prisma";
 import { PurchaseForm } from "@/components/purchase/purchase-form";
 import { VenueDialog } from "@/components/hero/venue-dialog";
+import { EventCountdown } from "@/components/hero/event-countdown";
+import { DrinksNoticeDialog } from "@/components/hero/drinks-notice-dialog";
 import {
   DEFAULT_ALCOHOL_ALLOWANCE,
   DOORS_TEXT,
-  PREVENTA_LABEL,
 } from "@/lib/config";
 import {
+  getActiveTiersForEvent,
+  getCurrentPresaleStage,
+} from "@/lib/presale";
+import {
   CalendarDays,
+  ArrowDown,
   Clock3,
   Music,
   ShieldCheck,
@@ -17,6 +24,13 @@ import {
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+const heroFont = localFont({
+  src: "../public/fonts/playfair-display.ttf",
+  weight: "400 900",
+  style: "normal",
+  display: "swap",
+});
 
 const formatPrice = (value: number) =>
   value.toLocaleString("es-AR", {
@@ -53,19 +67,24 @@ export default async function Home() {
   if (!event) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-28 text-center">
-        <h1 className="font-serif text-2xl font-bold uppercase tracking-widest text-foreground">
+        <h1 className="text-2xl font-medium tracking-tight text-foreground">
           Evento no publicado todavía
         </h1>
-        <p className="mt-3 text-sm font-light uppercase tracking-[0.25em] text-muted-foreground">
+        <p className="mt-3 text-base text-muted-foreground">
           Volvé pronto, estamos preparando la próxima peña.
         </p>
       </div>
     );
   }
 
+  const stage = getCurrentPresaleStage();
+  const { tiers: activeTiers } = await getActiveTiersForEvent(
+    event.id,
+    event.ticketTiers
+  );
   const eventDate = new Date(event.date);
-  const tier = event.ticketTiers[0];
-  const unitPrice = tier?.price ?? 10000;
+  const tier = activeTiers.find((t) => t.ticketCount === 1) ?? activeTiers[0];
+  const unitPrice = stage.individualPrice ?? tier?.price ?? 12000;
 
   const remaining = (t: { maxStock: number; soldCount: number }) =>
     Math.max(0, t.maxStock - t.soldCount);
@@ -77,9 +96,11 @@ export default async function Home() {
   });
 
   return (
-    <div className="bg-background text-foreground">
+    <div className="event-page bg-background text-foreground">
+      <DrinksNoticeDialog />
+
       {/* Hero Section */}
-      <section className="relative overflow-hidden border-b border-border">
+      <section className="event-hero relative overflow-hidden border-b border-border">
         {/* Background Image: Warm cacao wash with acoustic folk warmth */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
           <Image
@@ -87,44 +108,47 @@ export default async function Home() {
             alt="Fondo de peña folklórica con guitarras e instrumentos acústicos"
             fill
             priority
-            className="object-cover object-center contrast-105 brightness-95 saturate-110 opacity-30"
+            sizes="100vw"
+            className="event-hero-photo object-cover object-center contrast-105 brightness-95 saturate-110"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#3A2A1A]/80 via-[#3A2A1A]/90 to-[#3A2A1A]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,#3A2A1A_85%)]" />
+          <div className="event-hero-wash absolute inset-0" />
+          <div className="event-hero-vignette absolute inset-0" />
         </div>
 
-        <div className="relative mx-auto max-w-5xl px-6 py-24 sm:py-32 text-center">
+        <div className="event-hero-content relative mx-auto text-center">
           {/* Tag / Pre-heading */}
-          <div className="inline-flex items-center gap-2.5 rounded-full border border-amber-400/30 bg-[#4A3726]/90 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-300 shadow-sm backdrop-blur">
+          <div className="event-hero-tag inline-flex items-center gap-2.5 rounded-full border border-amber-400/30 bg-[#4A3726]/90 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-amber-300 shadow-sm">
             <Music className="size-3 text-amber-400" strokeWidth={1.5} />
             <span>Peña Folklórica · Universidad Austral</span>
           </div>
 
           {/* Main Headline */}
-          <h1 className="mx-auto mt-8 max-w-4xl font-serif text-4xl font-bold uppercase tracking-wider text-[#FBF3E3] sm:text-6xl lg:text-7xl leading-[1.12]">
+          <h1 className={`${heroFont.className} event-hero-title mx-auto mt-8 text-[#FBF3E3]`}>
             Una noche de folklore, baile, canto y amigos
           </h1>
 
-          <p className="mt-4 font-sans text-xs font-semibold uppercase tracking-[0.25em] text-amber-400 sm:text-sm">
+          <p className="event-hero-address font-semibold uppercase text-amber-400">
             En Mariano Acosta 1611, Pilar
           </p>
 
-          <p className="mx-auto mt-6 max-w-2xl font-sans text-sm font-normal leading-relaxed text-[#FBF3E3]/85 sm:text-base">
+          <p className="event-hero-description mx-auto mt-6 font-normal">
             {event.description}
           </p>
 
+          <EventCountdown targetDate={event.date} />
+
           {/* Centered details dock - Row 1: Date, Doors, Venue. Row 2: Price & Preventa centered */}
-          <div className="mx-auto mt-10 w-full max-w-4xl">
+          <div className="event-hero-details mx-auto mt-10 w-full max-w-4xl">
             {/* Fila 1: Día, Horarios y Ubicación en una sola fila */}
-            <div className="grid grid-cols-1 divide-y divide-amber-400/20 border-y border-amber-400/20 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-              <div className="flex items-center justify-center gap-2.5 px-4 py-3.5 text-xs font-medium uppercase tracking-[0.15em] text-[#FBF3E3]/90 text-center">
+            <div className="event-facts grid grid-cols-1 divide-y divide-amber-400/20 border-y border-amber-400/20 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+              <div className="event-fact flex items-center justify-center gap-2.5 text-[#FBF3E3]/90 text-center">
                 <CalendarDays
                   className="size-4 text-amber-300 shrink-0"
                   strokeWidth={1.5}
                 />
                 <span>{dateLabel}</span>
               </div>
-              <div className="flex items-center justify-center gap-2.5 px-4 py-3.5 text-xs font-medium uppercase tracking-[0.15em] text-[#FBF3E3]/90 text-center">
+              <div className="event-fact flex items-center justify-center gap-2.5 text-[#FBF3E3]/90 text-center">
                 <Clock3
                   className="size-4 text-amber-300 shrink-0"
                   strokeWidth={1.5}
@@ -134,61 +158,82 @@ export default async function Home() {
               <VenueDialog venue={event.venue} />
             </div>
 
-            {/* Fila 2: Precio con texto de preventa abajo centrado */}
-            <div className="flex items-center justify-center gap-3 px-6 pt-3">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-400/10 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-amber-300 leading-none">
-                <TicketIcon
-                  className="text-amber-300 shrink-0"
-                  strokeWidth={1.5}
-                  height={24}
-                  width={24}
-                />
-                <span>{PREVENTA_LABEL}</span>
+            {/* Fila 2: Precio con texto de preventa y plazo (o venta en puerta si cerró) */}
+            {stage.isClosed ? (
+              <div className="flex items-center justify-center gap-3 px-6 pt-3">
+                <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-300 leading-none">
+                  <TicketIcon
+                    className="text-amber-300 shrink-0"
+                    strokeWidth={1.5}
+                    height={20}
+                    width={20}
+                  />
+                  <span>Entradas disponibles en puerta</span>
+                </div>
               </div>
-              <span className="font-sans text-2xl font-bold tracking-tight sm:text-3xl leading-none text-[#FBF3E3]">
-                {formatPrice(unitPrice)}
-              </span>
-            </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 px-6 pt-3">
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-400/10 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-amber-300 leading-none">
+                  <TicketIcon
+                    className="text-amber-300 shrink-0"
+                    strokeWidth={1.5}
+                    height={20}
+                    width={20}
+                  />
+                  <span>{stage.name} · {stage.shortDeadline}</span>
+                </div>
+                <span className="font-sans text-2xl font-bold tracking-tight sm:text-3xl leading-none text-[#FBF3E3]">
+                  {formatPrice(unitPrice)}
+                </span>
+              </div>
+            )}
           </div>
+          <a href="#entradas" className="event-cta">
+            {stage.isClosed ? "Información de entradas en puerta" : "Conseguí tu entrada"}{" "}
+            <ArrowDown aria-hidden className="size-4" />
+          </a>
         </div>
       </section>
 
       <MinimalDivider />
 
       {/* Tickets / Purchase Section */}
-      <section id="entradas" className="scroll-mt-16 py-16 sm:py-24">
+      <section id="entradas" className="event-tickets">
         <div className="mx-auto max-w-5xl px-6">
           <div className="text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-700">
               Entradas
             </p>
-            <h2 className="mt-2 font-serif text-3xl font-bold uppercase tracking-wider text-foreground sm:text-5xl">
-              Conseguí tu entrada hoy
+            <h2 className="event-section-title mt-2 text-foreground">
+              {stage.isClosed ? "Entradas en puerta" : "Conseguí tu entrada hoy"}
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-xs sm:text-sm font-normal leading-relaxed text-foreground/80">
-              Pagá con Mercado Pago y recibí tu QR por email al instante.
-              Disponibles en {PREVENTA_LABEL}. Una sola entrada con acceso completo:
-              música en vivo, patio de comidas y la habilitación para comprar hasta {DEFAULT_ALCOHOL_ALLOWANCE} bebidas
-              con alcohol (exclusivo para mayores de 18 años).
+            <p className="event-tickets-description mx-auto mt-4 font-normal">
+              {stage.isClosed
+                ? "La venta anticipada online ha finalizado. Las entradas se adquieren directamente en puerta el día del evento."
+                : `Pagá con Mercado Pago y recibí tu QR por email al instante. Disponibles en ${stage.name} (${stage.deadlineLabel.toLowerCase()}). Una sola entrada con acceso completo: música en vivo, patio de comidas y la habilitación para comprar hasta ${DEFAULT_ALCOHOL_ALLOWANCE} bebidas con alcohol (exclusivo para mayores de 18 años).`}
             </p>
           </div>
 
           <PurchaseForm
-            tiers={event.ticketTiers.map((t) => ({
+            tiers={activeTiers.map((t) => ({
               id: t.id,
               name: t.name,
               price: t.price,
               ticketCount: t.ticketCount ?? 1,
               remaining: remaining(t),
             }))}
+            stageName={stage.name}
+            deadlineLabel={stage.deadlineLabel}
+            shortDeadline={stage.shortDeadline}
+            isClosed={stage.isClosed}
           />
         </div>
       </section>
 
       {/* Trust & Details: 3-column clean line-divided block */}
-      <section className="border-t border-b border-border bg-[#F1E7D2]">
-        <div className="mx-auto max-w-5xl px-6 py-20">
-          <div className="grid divide-y divide-border overflow-hidden rounded-2xl border border-border bg-[#FCF6E9] shadow-md sm:grid-cols-3 sm:divide-y-0 sm:divide-x">
+      <section className="event-trust border-y border-border">
+        <div className="event-trust-content mx-auto">
+          <div className="event-trust-grid grid divide-y divide-border overflow-hidden rounded-2xl border border-border sm:grid-cols-3 sm:divide-y-0 sm:divide-x">
             <div className="flex flex-col items-center p-8 text-center sm:p-10">
               <div className="grid size-12 place-items-center rounded-2xl border border-amber-600/30 bg-amber-100/80 text-amber-700">
                 <ShieldCheck
@@ -196,7 +241,7 @@ export default async function Home() {
                   strokeWidth={1.5}
                 />
               </div>
-              <h3 className="mt-6 font-serif text-base font-bold uppercase tracking-widest text-foreground">
+              <h3>
                 Pago seguro
               </h3>
               <p className="mt-3 text-sm font-normal leading-relaxed text-muted-foreground">
@@ -211,7 +256,7 @@ export default async function Home() {
                   strokeWidth={1.5}
                 />
               </div>
-              <h3 className="mt-6 font-serif text-base font-bold uppercase tracking-widest text-foreground">
+              <h3>
                 QR al instante
               </h3>
               <p className="mt-3 text-sm font-normal leading-relaxed text-muted-foreground">
@@ -223,12 +268,12 @@ export default async function Home() {
               <div className="grid size-12 place-items-center rounded-2xl border border-amber-600/30 bg-amber-100/80 text-amber-700">
                 <Wine className="size-6 text-amber-700" strokeWidth={1.5} />
               </div>
-              <h3 className="mt-6 font-serif text-base font-bold uppercase tracking-widest text-foreground">
+              <h3>
                 Hasta {DEFAULT_ALCOHOL_ALLOWANCE} bebidas
               </h3>
               <p className="mt-3 text-sm font-normal leading-relaxed text-muted-foreground">
-                Cada entrada de mayor de 18 años habilita la posibilidad de comprar hasta {DEFAULT_ALCOHOL_ALLOWANCE} bebidas
-                alcohólicas en la barra del evento. Los menores de edad no acceden a la compra ni consumo de alcohol.
+                Cada entrada de mayor de 18 años habilita la posibilidad de hasta {DEFAULT_ALCOHOL_ALLOWANCE} consumiciones
+                alcohólicas en la barra del evento. La compra y consumo de alcohol está permitida únicamente a mayores de 18 años.
               </p>
             </div>
           </div>

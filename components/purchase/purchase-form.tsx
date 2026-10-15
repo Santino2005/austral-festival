@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createCheckoutPreference } from "@/app/actions";
-import { DIET_OPTIONS } from "@/lib/diet";
+import { DIET_OPTIONS, dietLabel } from "@/lib/diet";
 import { DEFAULT_ALCOHOL_ALLOWANCE, PREVENTA_LABEL } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import {
@@ -29,12 +29,20 @@ import {
   Sparkles,
 } from "lucide-react";
 
-interface TierOption {
+export interface TierOption {
   id: string;
   name: string;
   price: number;
   ticketCount: number;
   remaining: number;
+}
+
+export interface PurchaseFormProps {
+  tiers: TierOption[];
+  stageName?: string;
+  deadlineLabel?: string;
+  shortDeadline?: string;
+  isClosed?: boolean;
 }
 
 interface GuestInput {
@@ -79,7 +87,12 @@ function resizeGuests(prev: GuestInput[], newLen: number): GuestInput[] {
   return [...prev, ...Array.from({ length: newLen - prev.length }, makeEmptyGuest)];
 }
 
-export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
+export function PurchaseForm({
+  tiers,
+  stageName = PREVENTA_LABEL,
+  deadlineLabel,
+  isClosed = false,
+}: PurchaseFormProps) {
   const router = useRouter();
 
   const individualTier = tiers.find((t) => t.ticketCount === 1) ?? tiers[0];
@@ -164,10 +177,27 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
     }
   }
 
+  if (isClosed) {
+    return (
+      <div className="purchase-form mx-auto">
+        <div className="purchase-ticket border border-border p-8 text-center text-muted-foreground">
+          <p className="font-serif text-xl font-bold text-foreground">
+            Venta anticipada online finalizada
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Las entradas ahora se adquieren directamente en puerta el día del evento.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!tier) {
     return (
-      <div className="mx-auto mt-10 max-w-3xl rounded-xl border border-border bg-[#F0E6D0] p-8 text-center text-xs uppercase tracking-[0.2em] text-muted-foreground shadow-sm">
-        No hay entradas a la venta por ahora.
+      <div className="purchase-form mx-auto">
+        <div className="purchase-ticket border border-border p-8 text-center text-base text-muted-foreground shadow-sm">
+          No hay entradas a la venta por ahora.
+        </div>
       </div>
     );
   }
@@ -175,13 +205,13 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
   const todayStr = new Date().toISOString().slice(0, 10);
 
   return (
-    <div className="mx-auto mt-12 max-w-3xl">
-      <div className="overflow-hidden rounded-xl border border-border bg-[#FCF6E9] shadow-2xl">
+    <div className="purchase-form mx-auto">
+      <div className="purchase-ticket overflow-hidden border border-border">
         {/* Ticket Top Banner */}
-        <div className="flex items-center justify-between gap-4 border-b border-border bg-[#EFE3C9] px-6 py-4 text-foreground">
+        <div className="purchase-banner flex items-center justify-between gap-4 border-b border-border text-foreground">
           <div className="flex items-center gap-2.5">
             <Music className="size-4 text-amber-700" strokeWidth={1.5} />
-            <span className="font-serif text-xs font-bold uppercase tracking-[0.2em] text-foreground">
+            <span className="purchase-banner-title font-semibold text-foreground">
               Peña Folklórica Austral
             </span>
           </div>
@@ -190,9 +220,7 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
           </span>
         </div>
 
-        <div className="px-6 py-8 sm:px-10">
-
-
+        <div className="purchase-content">
           {/* Tier header (shown when no pack available, original style) */}
           {!packTier && (
             <div className="flex flex-wrap items-end justify-between gap-4">
@@ -206,7 +234,7 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
                 <p className="mt-2 text-xs font-normal text-muted-foreground">
                   {soldOut
                     ? "Agotada"
-                    : `Disponibles (${PREVENTA_LABEL}) · habilita la compra de hasta ${DEFAULT_ALCOHOL_ALLOWANCE} bebidas con alcohol para mayores`}
+                    : `Disponibles (${stageName}${deadlineLabel ? ` · ${deadlineLabel.toLowerCase()}` : ""}) · habilitación para compra de alcohol permitida únicamente a mayores de 18`}
                 </p>
               </div>
               <div className="font-serif text-4xl font-bold text-foreground sm:text-5xl tracking-tight">
@@ -216,9 +244,9 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
           )}
 
           {/* Perforated ticket divider with cutouts */}
-          <div aria-hidden className="relative my-8">
-            <div className="absolute top-1/2 -left-10 size-6 -translate-y-1/2 rounded-full bg-[#F6EEDD] ring-1 ring-border" />
-            <div className="absolute top-1/2 -right-10 size-6 -translate-y-1/2 rounded-full bg-[#F6EEDD] ring-1 ring-border" />
+          <div aria-hidden className="purchase-perforation relative">
+            <div className="absolute top-1/2 -left-10 size-6 -translate-y-1/2 rounded-full bg-background ring-1 ring-border" />
+            <div className="absolute top-1/2 -right-10 size-6 -translate-y-1/2 rounded-full bg-background ring-1 ring-border" />
             <div className="border-t border-dashed border-border" />
           </div>
 
@@ -228,7 +256,7 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
                 Datos del comprador
               </h4>
 
-              <div role="radiogroup" aria-label="Tipo de compra" className="grid gap-3 sm:grid-cols-2">
+              <div role="radiogroup" aria-label="Tipo de compra" className="participation-options grid gap-3 sm:grid-cols-2">
                 {PARTICIPATION_OPTIONS.map((option) => {
                   const active = participation === option.value;
                   const Icon = option.icon;
@@ -273,7 +301,7 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
                 <div
                   role="radiogroup"
                   aria-label="Tipo de entrada"
-                  className="grid grid-cols-2 animate-in fade-in-0 zoom-in-95 duration-200 overflow-hidden rounded-lg border border-border bg-[#EDE0CC]"
+                  className="tier-options grid grid-cols-2 animate-in fade-in-0 zoom-in-95 duration-200 overflow-hidden border border-border"
                 >
                   {/* Individual */}
                   <label className="relative cursor-pointer">
@@ -293,14 +321,14 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
                           : "text-foreground/70 hover:bg-[#DDD0BC]"
                       )}
                     >
-                      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em]">
+                      <span className="tier-name flex items-center gap-1.5 font-semibold">
                         <TicketIcon className="size-3 shrink-0" strokeWidth={2} />
                         {individualTier?.name}
                       </span>
-                      <span className="font-serif text-sm font-bold leading-none">
+                      <span className="tier-price font-semibold leading-none">
                         {formatPrice(individualTier?.price ?? 0)}
                       </span>
-                      <span className="text-[9px] font-normal opacity-70">por entrada</span>
+                      <span className="tier-detail font-normal">por entrada</span>
                     </span>
                   </label>
 
@@ -326,19 +354,19 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
                       )}
                     >
                       {/* Savings badge — in-flow, centered */}
-                      <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-amber-600 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.15em] text-white shadow-sm">
+                      <span className="tier-detail mb-1 inline-flex items-center gap-1 rounded-full bg-amber-600 px-2 py-0.5 font-semibold text-white shadow-sm">
                         <Sparkles className="size-2.5 shrink-0" strokeWidth={2} />
                         Ahorrás {formatPrice(individualTier?.price ?? 0)}
                       </span>
-                      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em]">
+                      <span className="tier-name flex items-center gap-1.5 font-semibold">
                         <Users className="size-3 shrink-0" strokeWidth={2} />
                         Pack Familiar
                       </span>
-                      <span className="font-serif text-sm font-bold leading-none">
+                      <span className="tier-price font-semibold leading-none">
                         {formatPrice(packTier.price)}
                       </span>
-                      <span className="text-[9px] font-normal opacity-70">
-                        {packTier.ticketCount} entradas · pagás {packTier.ticketCount - 1}
+                      <span className="tier-detail font-normal">
+                        {packTier.ticketCount} entradas individuales
                       </span>
                     </span>
                   </label>
@@ -380,6 +408,7 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
               <div className="space-y-2">
                 <Label htmlFor="referringVolunteer" className="text-xs uppercase font-medium tracking-[0.15em] text-foreground/80">
                   ¿Venís de parte de alguno de nuestros voluntarios?
+                  <span className="purchase-optional">Opcional</span>
                 </Label>
                 <Input
                   id="referringVolunteer"
@@ -404,7 +433,7 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
                       <SelectTrigger id="quantity" className="border-border bg-[#FDF9F0] text-foreground focus-visible:border-amber-600 transition-[border-color,box-shadow,background-color,color] duration-200">
                         <SelectValue placeholder="Cantidad" />
                       </SelectTrigger>
-                      <SelectContent className="border-border bg-[#FCF6E9] text-foreground shadow-2xl">
+                      <SelectContent className="purchase-select border-border text-foreground shadow-2xl">
                         {Array.from({ length: 6 }, (_, i) => i + 1).map((n) => (
                           <SelectItem key={n} value={String(n)} className="focus:bg-amber-500/20 focus:text-amber-800">
                             {n} {n === 1 ? "entrada" : "entradas"}
@@ -421,25 +450,25 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
                 <div className="flex items-center gap-2 animate-in fade-in-0 zoom-in-95 duration-200 rounded-lg border border-amber-600/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-800">
                   <Users className="size-3.5 shrink-0 text-amber-700" strokeWidth={1.5} />
                   <span>
-                    El pack incluye <strong>{tier.ticketCount} entradas</strong> individuales al precio de{" "}
-                    <strong>{tier.ticketCount - 1}</strong>.
+                    El pack incluye <strong>{tier.ticketCount} entradas</strong> individuales con precio promocional.
                   </span>
                 </div>
               )}
             </div>
 
+            {/* Guest Details: Attendee vs Donation */}
             {attending ? (
               <div className="animate-in fade-in-0 duration-200 space-y-4">
                 <h4 className="font-serif text-xs font-bold uppercase tracking-[0.2em] text-amber-700">
                   Datos de cada asistente
                 </h4>
                 <p className="text-xs font-normal text-muted-foreground">
-                  Completá los datos de cada persona. Los mayores de 18 años quedan habilitados para comprar hasta {DEFAULT_ALCOHOL_ALLOWANCE} bebidas alcohólicas en barra (los menores no acceden a la compra de alcohol).
+                  Completá los datos de cada persona. La compra de bebidas con alcohol en barra está permitida únicamente a mayores de 18 años (hasta {DEFAULT_ALCOHOL_ALLOWANCE} consumiciones).
                 </p>
                 {guests.map((guest, i) => (
                   <div
                     key={i}
-                    className="animate-in fade-in-0 slide-in-from-bottom-2 duration-200 rounded-lg border border-border bg-[#F0E6D0] p-4 shadow-sm transition-[border-color,box-shadow] hover:border-amber-600/40 hover:shadow-md"
+                    className="guest-card animate-in fade-in-0 slide-in-from-bottom-2 duration-200 border border-border"
                   >
                     <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-foreground">
                       <UserRound className="h-3.5 w-3.5 text-amber-700" strokeWidth={1.5} />
@@ -502,9 +531,11 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
                           }
                         >
                           <SelectTrigger id={`guest-diet-${i}`} className="border-border bg-[#FDF9F0] text-foreground focus-visible:border-amber-600 transition-[border-color,box-shadow,background-color,color] duration-200">
-                            <SelectValue placeholder="Seleccioná el menú" />
+                            <SelectValue placeholder="Seleccioná el menú">
+                              {dietLabel(guest.diet)}
+                            </SelectValue>
                           </SelectTrigger>
-                          <SelectContent className="border-border bg-[#FCF6E9] text-foreground shadow-2xl">
+                          <SelectContent className="purchase-select border-border text-foreground shadow-2xl">
                             {DIET_OPTIONS.map((option) => (
                               <SelectItem
                                 key={option.value}
@@ -536,7 +567,7 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
             )}
 
             {/* Total summary bar */}
-            <div className="flex items-center justify-between rounded-lg border border-amber-600/30 bg-[#EFE3C9] px-5 py-4">
+            <div className="purchase-total flex items-center justify-between gap-3">
               <div className="grid gap-0.5">
                 <span className="text-xs font-medium uppercase tracking-[0.2em] text-foreground/80">
                   {isPack
@@ -558,12 +589,12 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
             <Button
               type="submit"
               size="lg"
-              className="h-12 w-full cursor-pointer rounded-xl bg-gradient-to-r from-[#C69234] via-[#DEB052] to-[#C69234] hover:from-[#D49E3B] hover:via-[#E8BC60] hover:to-[#D49E3B] text-[#3A2210] font-bold text-xs uppercase tracking-[0.25em] transition-all shadow-md shadow-amber-900/15 hover:shadow-lg border border-[#ECC472]/60 disabled:opacity-50"
+              className="purchase-submit w-full cursor-pointer disabled:opacity-50"
               disabled={loading || soldOut}
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 size-4 animate-spin text-[#3A2210]" />{" "}
+                  <Loader2 className="mr-2 size-4 animate-spin" />{" "}
                   Preparando pago…
                 </>
               ) : (
@@ -576,7 +607,7 @@ export function PurchaseForm({ tiers }: { tiers: TierOption[] }) {
                 : "Al completar el pago recibís tu comprobante de donación por email."}
             </p>
             <p className="text-center text-xs font-normal uppercase tracking-[0.2em] text-muted-foreground/50">
-              No está permitida la venta de bebidas alcohólicas a menores de edad.
+              La venta y consumo de bebidas alcohólicas está permitida únicamente a mayores de 18 años.
             </p>
           </form>
         </div>

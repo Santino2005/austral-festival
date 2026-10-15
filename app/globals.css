@@ -1,17 +1,18 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./event-page.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
     --color-background: var(--background);
     --color-foreground: var(--foreground);
-    --font-sans: var(--font-sans);
-    --font-serif: var(--font-serif);
-    --font-display: var(--font-serif);
-    --font-heading: var(--font-serif);
-    --font-mono: var(--font-geist-mono);
+    --font-sans: var(--font-source-sans), "Segoe UI", sans-serif;
+    --font-serif: var(--font-source-sans), "Segoe UI", sans-serif;
+    --font-display: var(--font-source-sans), "Segoe UI", sans-serif;
+    --font-heading: var(--font-source-sans), "Segoe UI", sans-serif;
+    --font-mono: var(--font-source-sans), "Segoe UI", sans-serif;
     --color-cacao: var(--cacao);
     --color-cacao-deep: var(--cacao-deep);
     --color-cacao-card: var(--cacao-card);
@@ -52,11 +53,11 @@
 }
 
 :root, .dark {
-    --font-display: var(--font-serif);
+    --font-display: var(--font-source-sans), "Segoe UI", sans-serif;
 
     /* Peña familiar: crema cálido, miel y marrones de la tierra */
-    --background: #F6EEDD;
-    --foreground: #3B2A1B;
+    --background: #FAF6EE;
+    --foreground: #392B20;
 
     /* Marrón cacao: anclas oscuras (overlay de foto del hero) */
     --cacao-deep: #2B1D11;
@@ -70,14 +71,14 @@
     --cielo: #1A5B83;
     --vino: #9B223B;
 
-    --card: #FCF6E9;
-    --card-foreground: #3B2A1B;
-    --popover: #FCF6E9;
-    --popover-foreground: #3B2A1B;
+    --card: #FFFDF8;
+    --card-foreground: #392B20;
+    --popover: #FFFDF8;
+    --popover-foreground: #392B20;
 
     /* Miel / caramelo */
     --amber-gold: #C08A3E;
-    --primary: #7A4B1A;
+    --primary: #79552C;
     --primary-foreground: #FDF7EA;
 
     /* Tan */
@@ -85,15 +86,15 @@
     --secondary-foreground: #3B2A1B;
 
     --muted: #F0E6D0;
-    --muted-foreground: #54422C;
+    --muted-foreground: #716354;
 
     --accent: #EFE3C9;
     --accent-foreground: #3B2A1B;
 
     --destructive: #9B223B;
 
-    --border: rgba(94, 66, 38, 0.20);
-    --input: rgba(90, 62, 34, 0.25);
+    --border: #E5D8C4;
+    --input: #D9CEBC;
     --ring: #8A5A26;
 
     --radius: 0.5rem;

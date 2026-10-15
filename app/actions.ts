@@ -7,6 +7,7 @@ import { claimAndFulfill } from "@/lib/fulfillment";
 import { isLegalAge, ageAsOf } from "@/lib/age";
 import { VALID_DIET_VALUES } from "@/lib/diet";
 import { DEFAULT_ALCOHOL_ALLOWANCE } from "@/lib/config";
+import { getCurrentPresaleStage } from "@/lib/presale";
 import {
   isStaffAuthed,
   setStaffCookie,
@@ -49,6 +50,14 @@ export async function createCheckoutPreference({
   guests: GuestInput[];
 }): Promise<ActionResponse<{ initPoint: string; purchaseId: string }>> {
   try {
+    const stage = getCurrentPresaleStage();
+    if (stage.isClosed) {
+      return {
+        ok: false,
+        error: "La venta online ha finalizado. Las entradas se adquieren directamente en puerta el día del evento.",
+      };
+    }
+
     const qty = Math.floor(Number(quantity));
     if (!qty || qty < 1 || qty > 6) {
       return { ok: false, error: "La cantidad debe ser entre 1 y 6 entradas." };
@@ -64,6 +73,17 @@ export async function createCheckoutPreference({
     const tier = await prisma.ticketTier.findUnique({ where: { id: tierId } });
     if (!tier || !tier.isActive) {
       return { ok: false, error: "La entrada seleccionada no está disponible." };
+    }
+
+    // Validar que el tier pertenezca a la preventa vigente
+    if (
+      (tier.ticketCount === 1 && tier.price !== stage.individualPrice) ||
+      (tier.ticketCount > 1 && tier.price !== stage.packPrice)
+    ) {
+      return {
+        ok: false,
+        error: "Esta preventa ya no se encuentra vigente. Por favor recargá la página para ver las opciones disponibles.",
+      };
     }
 
     const ticketCount = tier.ticketCount ?? 1;
